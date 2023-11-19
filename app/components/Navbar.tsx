@@ -17,6 +17,8 @@ export function Navbar(props: any) {
     const handleFileSelect = async () => {
         console.log("button clicked");
 
+        setFileDropdown(false);
+
         const selected = await open({
             directory: true,
             multiple: true,
@@ -61,9 +63,9 @@ export function Navbar(props: any) {
                     </svg>
                 </div>
                 <div className="flex-auto">
-                    <button onClick={handleFileSelect} >
+                    <button className="block font-semibold text-gray-900" onClick={handleFileSelect} >
                     Open
-                    <p className="mt-1 text-gray-600">Get a better understanding of your traffic</p>
+                    <p className="mt-1 text-gray-600">Open Folders to load files</p>
                     </button>
                 </div>
                 </div>

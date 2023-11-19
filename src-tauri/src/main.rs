@@ -1,5 +1,9 @@
-use walkdir::{WalkDir};
+use std::{collections::HashMap, vec, fs::File, io::Read};
+use dfile::DisplayDirectory;
 
+use walkdir::{WalkDir};
+use std::fs;
+use base64;
 
 use crate::dfile::DFile;
 #[path = "model/dfile.rs"] mod dfile;
@@ -9,7 +13,7 @@ use crate::dfile::DFile;
 
 fn main() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![list_files])
+    .invoke_handler(tauri::generate_handler![list_files, get_file_content])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
@@ -23,7 +27,7 @@ fn is_valid_file(path: String) -> bool {
         }
     }
 
-    let allowed_files = vec![".txt", ".json",".pdf", ".docx"];
+    let allowed_files = vec![".txt", ".json",".pdf", ".docx", ".png", ".jpeg", ".jpg", ".xml"];
     for ext in allowed_files {
         if path.contains(ext) {
             return true;
@@ -33,71 +37,98 @@ fn is_valid_file(path: String) -> bool {
 }
 
 #[tauri::command]
-async fn list_files(folderPath: String) -> Result<Vec<DFile>, String> {
+async fn list_files(folderPath: String) -> Result<Vec<DisplayDirectory>, String> {
     
     println!("{}", folderPath);
     println!("--- printing list ---");
+    let mut entriesMap: HashMap<String, Vec<DFile>> = HashMap::new();
 
-    let entries: Vec<DFile> = WalkDir::new(folderPath)
-        .into_iter()
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
+    WalkDir::new(folderPath).into_iter().for_each(|entry| {
+        match entry {
+            Ok(e) => {
                 if e.file_type().is_file() && is_valid_file(e.path().to_string_lossy().to_string()) {
                     println!("{:?}",e.path().extension());
 
                     let os_str = e.path().file_name().unwrap_or_default();
                     let os_ext = e.path().extension().map_or_else(|| "".into(), |ext| ext.to_string_lossy());
+                    
+                    let mut p: String = String::new();
 
-                    let entry = dfile::DFile {
+                    if let Some(parent) = e.path().parent().and_then(|p| p.file_name()) {
+                        println!("Parent directory name: {:?}", parent);
+                        p = parent.to_string_lossy().to_string();
+                    } else {
+                        println!("No parent directory found");
+                    };
+
+                    let entry = DFile {
                         name: os_str.to_string_lossy().to_string(),
                         extension: os_ext.to_string(),
                         url: e.path().to_string_lossy().to_string(),
                     };
+                    
+                    if entriesMap.contains_key(&p) {
+                        entriesMap.entry(p).or_insert_with(Vec::new).push(entry);
+                    } else {
+                        entriesMap.insert(p, vec![entry]);
+                    }
 
-                    Some(entry)
-                } else {
-                    None
                 }
-            })
-        })
-        .collect();
+            }
+            Err(err) => {
+                // Handle errors in a specific way, or ignore them if desired
+                println!("Error: {:?}", err);
+            }
+        }
+        
+    });
+    let mut res = Vec::new();
 
-    Ok(entries)
+    for (key, value) in entriesMap {
+        res.push(DisplayDirectory {
+            name: key,
+            files: value,
+        });
+    }
+
+    Ok(res)
 }
 
-// #[tauri::command]
-// fn select_folder() -> String {
-//     // Initialize GTK
-//     gtk::init().expect("Failed to initialize GTK.");
+#[tauri::command]
+fn get_file_content(fullPath: String) -> String {
+    let path = fullPath.replace("\\", "\\\\");
+    let err: String = String::new();
 
-//     // Create a GTK file chooser dialog
-//     let dialog = FileChooserDialog::new(
-//         Some("Select Folder"),
-//         Some(&tauri::Window::new().inner()),
-//         FileChooserAction::SelectFolder,
-//     );
-//     dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-//     dialog.add_button("Open", gtk::ResponseType::Accept);
+    println!("--reading---");
+    println!("{}", path);
+    // Read the file content
 
-//     // Create a file filter to show only directories
-//     let filter = FileFilter::new();
-//     filter.add_pattern("*");
-//     filter.set_name(Some("All Directories"));
-//     dialog.add_filter(&filter);
+    if(path.contains(".pdf")) {
+        if let Ok(mut file) = File::open(path) {
 
-//     // Show the dialog and handle the result
-//     let result = if dialog.run() == gtk::ResponseType::Accept.into() {
-//         let filename = dialog.get_filename().unwrap();
-//         Some(filename.to_string_lossy().to_string())
-//     } else {
-//         None
-//     };
+        // Create a buffer to read the file in chunks
+        let mut buffer = Vec::new();
+        if let Ok(res) = file.read_to_end(&mut buffer) {
+            // Encode the binary content as base64
+            let base64_encoded = base64::encode(&buffer);
 
-//     // Cleanup GTK
-//     dialog.destroy();
-//     gtk::main_quit();
+            // Return base64-encoded string
+            base64_encoded
+        } else {
+            err
+        }
+        } else {
+            err
+        }
+    } else {
 
-//     // Convert the result to a string
-//     result.unwrap_or_else(String::new)
-
-// }
+        if let Ok(content) = fs::read(path) {
+            // Encode binary content as base64
+            let base64_encoded = base64::encode(&content);
+            base64_encoded
+        }
+        else {
+            err
+        }
+    }
+}

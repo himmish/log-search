@@ -5,9 +5,19 @@ type DirectoryState = {
   loading: boolean;
 };
 
+type FileState = {
+  url: string;
+  type: string;
+};
+
 const initialState: DirectoryState = {
   list: [],
   loading: true,
+};
+
+const initialFileState: FileState = {
+  url: "",
+  type: "",
 };
 
 export const todo = createSlice({
@@ -21,5 +31,19 @@ export const todo = createSlice({
   },
 });
 
+export const fsSlice = createSlice({
+  name: "fSlice",
+  initialState: initialFileState,
+  reducers: {
+    updateFile: (state, action) => {
+      state.url = action.payload.url;
+      state.type = action.payload.type;
+    },
+  },
+});
+
 export const { updateTodo} = todo.actions;
-export default todo.reducer;
+export const { updateFile} = fsSlice.actions;
+
+export const todoReducer = todo.reducer;
+export const fsSliceReducer = fsSlice.reducer;
