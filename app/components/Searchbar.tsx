@@ -13,8 +13,8 @@ export default function Search() {
 
     
   return (
-      <div className="relative w-full px-40">
-        <div className=" max-w-md space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1200 ease-in-out">
+      <div className="w-full max-px-40 px-20 py-4">
+        <div className="max-w-md space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1200 ease-in-out">
           
           <form onSubmit={onSubmit} className="bg-black rounded-xl shadow-lg h-fit flex flex-row px-1 items-center w-full">
             <input

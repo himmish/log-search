@@ -1,11 +1,13 @@
 use std::{collections::HashMap, vec, fs::File, io::Read};
+
 use dfile::DisplayDirectory;
 
 use walkdir::{WalkDir};
 use std::fs;
 use base64;
+mod service;
 
-use crate::dfile::DFile;
+use crate::{dfile::DFile, service::f_factory::FileReaderImpl};
 #[path = "model/dfile.rs"] mod dfile;
 
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
@@ -103,7 +105,7 @@ fn get_file_content(fullPath: String) -> String {
     println!("{}", path);
     // Read the file content
 
-    if(path.contains(".pdf")) {
+    if path.contains(".pdf") {
         if let Ok(mut file) = File::open(path) {
 
         // Create a buffer to read the file in chunks
@@ -120,7 +122,26 @@ fn get_file_content(fullPath: String) -> String {
         } else {
             err
         }
-    } else {
+    } else if path.contains(".json") || path.contains(".txt") || path.contains(".xml") {
+        if let Ok(content) = fs::read_to_string(path) {
+            content
+        }
+        else {
+            err
+        }
+    } else if path.contains(".doc") || path.contains(".docx") {
+        println!("inside doc");
+        let doc_file = service::f_factory::FileReader {
+            path,
+            ftype: service::f_factory::FileType::DOC,
+        };
+        match doc_file.read() {
+            Ok(result) => println!("Read result: {}", result),
+            Err(err) => eprintln!("Error reading document: {}", err),
+        }
+        "".to_string()
+    }
+     else {
 
         if let Ok(content) = fs::read(path) {
             // Encode binary content as base64
