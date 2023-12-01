@@ -1,7 +1,16 @@
 use derive_more::Display;
-use std::io::{Result};
+use std::{io::Result, sync::{MutexGuard, Mutex}};
 
-use super::d_read::{Doc, DocReader};
+use lazy_static::lazy_static;
+
+use crate::service::d_read::DocReader;
+use super::search_engine::SearchEngine;
+
+
+lazy_static!{
+    static ref DOC_READER :Mutex<DocReader> = Mutex::new(DocReader::new());
+}
+
 
 #[derive(Display, PartialEq, Eq, Debug)]
 pub(crate) enum FileType {
@@ -9,31 +18,25 @@ pub(crate) enum FileType {
     DOC,
 }
 
-
 pub(crate) struct FileReader {
-    pub(crate) path: String,
-    pub(crate) ftype: FileType,
 }
 
-pub(crate) trait FileReaderImpl {
-    fn read(&self) -> Result<String>;
-}
-
-impl FileReaderImpl for FileReader {
-    fn read(&self) -> Result<String> {
-        if self.ftype == FileType::DOC {
+impl FileReader {
+    
+    pub(crate) fn new() -> FileReader {
+        println!("File Reader initialized");
+        FileReader {}
+    }
+    pub(crate) fn read(&self, ftype :FileType, path :String, mut search_engine: MutexGuard<'_, SearchEngine>) -> Result<String> {
+        if ftype == FileType::DOC {
             println!("DOC Type Selected");
-            let doc = Doc { path: self.path.clone() };
-            match doc.read() {
-                Ok(result) => println!("Read result: {}", result),
-                Err(err) => eprintln!("Error reading document: {}", err),
+            let doc = DOC_READER.lock().unwrap();
+            match doc.read(path, search_engine) {
+                Ok(result) => return Ok(result),
+                Err(err) => return Err(err),
             }
-        } else {
-            // Handle other file types if needed
-            // For now, we'll just print a message
-            println!("Unsupported file type: {:?}", self.ftype);
         }
-
-        Ok("SUCCESS".to_string())
+        println!("Unsupported file type: {:?}", ftype);
+        Ok("".to_string())
     }
 }

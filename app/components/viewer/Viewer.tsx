@@ -59,8 +59,8 @@ export function XmlViewer({content}: String) {
 
 export function DefaultViewer() {
   return (
-    <div className="ml-10 mt-20">
-      <Image width={500} height={300} src={doodle} alt="Home" />
+    <div className="ml-4 mt-2">
+      <Image width={600} height={300} src={doodle} alt="Home" />
     </div>
   );
 }
@@ -72,14 +72,16 @@ export default function Viewer() {
   const type = useSelector((state: RootState) => state.fsSliceReducer.type);
   
   useEffect(() => {
-    invoke('get_file_content', { fullPath: url })
+    if(url !== undefined && url.length > 0) {  
+    invoke('get_file_content', { path: url })
     .then((content) => {
-        console.log(content);
-        setFileContent(content);
+      console.log(content);
+      setFileContent(content);
     })
     .catch((error) => {
-        console.error(error);
+      console.error(error);
     });
+    }
   }, [url, type]);
 
   function mapToViewer(type: String, fileContent: any) {

@@ -9,8 +9,6 @@ import React from "react";
 import { updateFile } from "../redux/features/todo-slice";
 import { IconMapper, DirectoryIconMapper } from "./IconMapper";
 
-const { list_files } = require('@tauri-apps/api/fs');
-
 export interface FileProps {
     name: string;
     extension: string;
@@ -31,6 +29,7 @@ export default function Directory() {
     const isLoading = useSelector((state: RootState) => state.todoReducer.loading);
 
     useEffect(() => {
+        if(todoList !== undefined && todoList.length !== 0) {
         invoke('list_files', { folderPath: todoList[0] })
         .then((files1) => {
             files1.sort(function(a: FilesProps, b: FilesProps) {
@@ -43,6 +42,7 @@ export default function Directory() {
         .catch((error) => {
             console.error(error);
         });
+        }
     }, [isLoading, todoList]);
 
 
@@ -50,9 +50,7 @@ export default function Directory() {
 
     const handleFileOpen = async (url: string, type: string) => {
         console.log(url);
-        dispatch(
-            updateFile({url, type})
-        );
+        dispatch(updateFile({url, type}));
     }
     const handleDirectoryExpand = (f: FilesProps, e: any) => {
         console.log("clicked unexpand for " + f.name);
@@ -66,17 +64,14 @@ export default function Directory() {
         setFiles(copyFiles);
     }
     function directoryExpandedStatus (val?: boolean): boolean {
-        if(val !== undefined && val == false) {
-            return false;
-        }
+        if(val !== undefined && val == false) return false;
         return true;
     }
 
     if(!files?.length){
         return(
             <div className="relative px-0">
-                <div className="relative px-6 py-4 flex items-center space-x-3 focus-within:ring-0 backdrop-blur-sm">
-                    <h3 className="text-grey">Directory</h3>
+                <div className="relative px-6 py-4 flex items-center space-x-3 focus-within:ring-0">
                 </div>
             </div>
         );
@@ -94,16 +89,16 @@ export default function Directory() {
                     {!directoryExpandedStatus(f.expanded) ? <></> :
                     <div>
                         {(f.files.map((file: FileProps) => (
-                            <div key={file.name} className="relative px-4 py-2 flex items-center space-x-3 focus-within:ring-0">
-                                <button className="relative flex items-center space-x-3 focus-within:ring-0" onClick={(e) => handleFileOpen(file.url, file.extension)}>
-                                    <div className="flex-shrink-0 h-4 w-4 ">
-                                        {IconMapper(file.extension)}
-                                    </div>
-                                    <p className="text-sm font-medium text-black truncate hover:text-clip">
-                                        {file.name}
-                                    </p>
-                                </button>
-                            </div>
+                        <div key={file.name} className="relative px-4 py-2 flex items-center space-x-3 focus-within:ring-0">
+                            <button className="relative flex items-center space-x-3 focus-within:ring-0" onClick={(e) => handleFileOpen(file.url, file.extension)}>
+                                <div className="flex-shrink-0 h-4 w-4 ">
+                                    {IconMapper(file.extension)}
+                                </div>
+                                <p className="text-sm font-medium text-black truncate hover:text-clip">
+                                    {file.name}
+                                </p>
+                            </button>
+                        </div>
                         )))}
                     </div>
                     }

@@ -1,15 +1,22 @@
 'use client';
+import { invoke } from "@tauri-apps/api";
 import { FormEvent } from "react";
 import { BiSearchAlt } from "react-icons/bi";
 
 export default function Search() {
-    async function onSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
-        const formData = new FormData(event.currentTarget)
-        // for (const value of formData.values()) {
-        //     console.log(value);
-        // }
-    }
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    let values = formData.values();
+
+    invoke('search_content', { query: values })
+    .then((res) => {
+      console.log(res);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+  }
 
     
   return (
