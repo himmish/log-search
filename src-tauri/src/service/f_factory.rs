@@ -1,5 +1,5 @@
 use derive_more::Display;
-use std::{io::Result, sync::{MutexGuard, Mutex}};
+use std::{io::Result, sync::{MutexGuard, Mutex}, path::Path};
 
 use lazy_static::lazy_static;
 
@@ -27,11 +27,12 @@ impl FileReader {
         println!("File Reader initialized");
         FileReader {}
     }
-    pub(crate) fn read(&self, ftype :FileType, path :String, mut search_engine: MutexGuard<'_, SearchEngine>) -> Result<String> {
+    pub(crate) fn read(&self, ftype :FileType, path :String, last_modified: u64, mut search_engine: MutexGuard<'_, SearchEngine>) -> Result<String> {
         if ftype == FileType::DOC {
             println!("DOC Type Selected");
+            let file_name = Path::new(&path).file_name().unwrap().to_string_lossy().to_string();
             let doc = DOC_READER.lock().unwrap();
-            match doc.read(path, search_engine) {
+            match doc.read(file_name, path, last_modified, search_engine) {
                 Ok(result) => return Ok(result),
                 Err(err) => return Err(err),
             }

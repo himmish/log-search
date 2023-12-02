@@ -1,18 +1,20 @@
+use std::mem::replace;
+use std::time::UNIX_EPOCH;
 use std::{collections::HashMap, vec, fs::File, io::Read};
 use std::sync::Mutex;
 use lazy_static::lazy_static;
 
-use dfile::DisplayDirectory;
+use dfile::{DisplayDirectory, DFile};
+#[path = "model/dfile.rs"] mod dfile;
 
 use service::search_engine::SearchEngine;
 use walkdir::WalkDir;
-use std::fs;
+use std::fs::{self, metadata};
 use base64;
 mod service;
 
 use crate::service::f_factory::{FileReader, FileType};
-use crate::dfile::DFile;
-#[path = "model/dfile.rs"] mod dfile;
+use crate::service::util::is_valid_file;
 
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -30,24 +32,6 @@ fn main() {
     .expect("error while running tauri application");
 }
 
-
-fn is_valid_file(path: String) -> bool {
-    let ignore_files= vec![".git", "node_modules"];
-    for ext in ignore_files {
-        if path.contains(ext) {
-            return false;
-        }
-    }
-
-    let allowed_files = vec![".txt", ".json",".pdf", ".docx", ".png", ".jpeg", ".jpg", ".xml"];
-    for ext in allowed_files {
-        if path.contains(ext) {
-            return true;
-        }
-    }
-    return false;
-}
-
 #[tauri::command]
 async fn list_files(folderPath: String) -> Result<Vec<DisplayDirectory>, String> {
     
@@ -61,12 +45,11 @@ async fn list_files(folderPath: String) -> Result<Vec<DisplayDirectory>, String>
                 if e.file_type().is_file() && is_valid_file(e.path().to_string_lossy().to_string()) {
                     let os_str = e.path().file_name().unwrap_or_default();
                     let os_ext = e.path().extension().map_or_else(|| "".into(), |ext| ext.to_string_lossy());
-                    
-                    let mut p: String = String::new();
 
-                    if let Some(parent) = e.path().parent().and_then(|p| p.file_name()) {
-                        p = parent.to_string_lossy().to_string();
-                    }
+                    let parent = e.path().parent().and_then(|p| p.file_name()).unwrap();
+                    let p: String = parent.to_string_lossy().to_string();
+
+                    let last_modified = metadata(e.path()).unwrap().modified().unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
                     let entry = DFile {
                         name: os_str.to_string_lossy().to_string(),
@@ -83,7 +66,7 @@ async fn list_files(folderPath: String) -> Result<Vec<DisplayDirectory>, String>
                     println!("url: {}", url);
                     if url.contains(".docx") {
                         println!("found a doc");
-                        read_docs(url);
+                        read_docs(url, last_modified);
                     }
 
                 }
@@ -139,7 +122,9 @@ async fn get_file_content(path: String) -> String {
             return content;
         }
     } else if path.contains(".doc") || path.contains(".docx") {
-        read_docs(path);
+        let last_modified = metadata(path.clone()).unwrap().modified().unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let npath = path.replace("\\", "\\\\");
+        read_docs(npath, last_modified);
         return "".to_string();
     }
      else {
@@ -152,13 +137,13 @@ async fn get_file_content(path: String) -> String {
 }
 
 
-fn read_docs(path: String) {
+fn read_docs(path: String, last_modified: u64) {
     {
         println!("inside doc");
         let doc_file = FILE_READER.lock().unwrap();
         let mut search_engine = SEARCH_ENGINE.lock().unwrap();
     
-        match doc_file.read(FileType::DOC, path, search_engine) {
+        match doc_file.read(FileType::DOC, path, last_modified, search_engine) {
             Ok(result) => println!("Read result: {}", result),
             Err(err) => eprintln!("Error reading document: {}", err),
         }

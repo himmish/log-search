@@ -16,7 +16,7 @@ impl DocReader {
         DocReader {}
     }
 
-    pub(crate) fn read(&self, path :String, mut search_engine :MutexGuard<'_, SearchEngine>) -> Result<String> {
+    pub(crate) fn read(&self, file_name: String, path :String, last_modified :u64, mut search_engine :MutexGuard<'_, SearchEngine>) -> Result<String> {
         let file_contents_result = read_to_vec(&PathBuf::from(&path));
         if let Err(err) = file_contents_result {
             return Ok(err.to_string())
@@ -33,7 +33,7 @@ impl DocReader {
         let ans = parse_docx(original_docx)?;
         
         println!("file read successfully");
-        search_engine.append(path, ans.join(r" \"));
+        search_engine.append(file_name, path, ans.join(r" \"), last_modified);
 
         Ok("SUCCESS".to_string())
     }
